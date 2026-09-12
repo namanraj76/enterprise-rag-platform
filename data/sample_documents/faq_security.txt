@@ -1,0 +1,13 @@
+# Security FAQ
+
+## Password reset
+
+To reset a user password, open the administration console, select the user record, and choose the password reset action. Verify the user identity before completing the reset so the account remains protected.
+
+## MFA policy
+
+Users enrolled in MFA must confirm the code from the authenticator app before the session is approved. If MFA codes fail after a device change, require re-enrollment and verify that the device time is synchronized.
+
+## Auth-401 errors
+
+The AUTH-401 error indicates that the user session was rejected because the token could not be validated. This typically occurs when the certificate is expired, the timestamp is off, or the identity provider is unavailable.

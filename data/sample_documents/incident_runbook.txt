@@ -1,0 +1,24 @@
+# Service Recovery Runbook
+
+## Incident: Gateway Authentication Failure
+
+If users report authentication failures after upgrading the gateway, first verify the appliance version and confirm that the authentication certificate is valid. The system may reject sessions when the time drift exceeds the accepted threshold. In that case, re-sync the server clock and restart the authentication service.
+
+## Root cause patterns
+
+- Invalid certificate chain
+- Clock skew on the gateway node
+- Expired tokens after version 5.2 rollout
+- Failed SSO configuration after migration
+
+## Recovery steps
+
+1. Check the gateway version and revision history.
+2. Validate the certificate chain and expiration dates.
+3. Confirm the time difference between the gateway and the identity provider is within tolerance.
+4. Restart the authentication service if the certificate or clock are corrected.
+5. Re-test login with a known valid user.
+
+## Escalation
+
+Escalate to the platform engineering backlog if the issue persists after the certificate chain and clock checks are complete.
