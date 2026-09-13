@@ -2,6 +2,8 @@
 
 A practical enterprise retrieval-augmented generation project designed around the full request flow described in the study guide: document ingestion, metadata enrichment, chunking, embeddings, hybrid retrieval, reranking, grounded generation, evaluation, API exposure, and deployment-ready packaging.
 
+![CI](https://github.com/namanraj76/enterprise-rag-platform/actions/workflows/ci.yml/badge.svg)
+
 ## Goals
 
 - Build a RAG platform that answers questions from internal knowledge sources.
@@ -64,6 +66,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python run.py
 ```
+
+CI: This repository includes a GitHub Actions workflow that runs the test suite on push and pull requests. The workflow runs `pytest -q` on Python 3.12.
 
 Then open the FastAPI docs at:
 
