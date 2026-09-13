@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import List
 
 from app.core.models import RetrievalResult
+from app.utils.logging import logger
+import time
 
 
 class SimpleReranker:
     """Combines lexical and semantic scores with a simple weighted re-ranking."""
 
     def rerank(self, semantic: List[RetrievalResult], lexical: List[RetrievalResult], alpha: float = 0.6) -> List[RetrievalResult]:
+        t0 = time.perf_counter()
         merged = {}
         for result in semantic:
             merged[result.chunk_id] = {"result": result, "semantic": result.score, "lexical": 0.0}
@@ -25,4 +28,7 @@ class SimpleReranker:
             result.score = combined
             ranked.append(result)
 
-        return sorted(ranked, key=lambda r: r.score, reverse=True)
+        ranked_sorted = sorted(ranked, key=lambda r: r.score, reverse=True)
+        t1 = time.perf_counter()
+        logger.info("reranker: output=%d duration=%.3fs", len(ranked_sorted), t1 - t0)
+        return ranked_sorted

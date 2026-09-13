@@ -5,6 +5,8 @@ from typing import List
 import numpy as np
 
 from app.core.models import Chunk, RetrievalResult
+from app.utils.logging import logger
+import time
 
 
 class SemanticRetriever:
@@ -26,7 +28,9 @@ class SemanticRetriever:
         return np.vstack(vectors)
 
     def search(self, query: str, top_k: int = 5) -> List[RetrievalResult]:
+        t0 = time.perf_counter()
         if not self.documents:
+            logger.info("semantic search: no documents")
             return []
 
         q_vector = np.array([
@@ -40,8 +44,10 @@ class SemanticRetriever:
         norms = np.linalg.norm(self._embeddings, axis=1)
         query_norm = np.linalg.norm(q_vector)
         if query_norm == 0:
+            logger.info("semantic search: empty query_norm")
             return []
-
+        t1 = time.perf_counter()
+        logger.info("semantic compute sims duration=%.3fs", t1 - t0)
         sims = (self._embeddings @ q_vector) / (norms * query_norm)
         indices = np.argsort(sims)[::-1][:top_k]
 
