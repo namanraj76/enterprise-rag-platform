@@ -2,6 +2,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 .env
+/data/aurelia.db
 *.pyc
 .DS_Store
 .coverage

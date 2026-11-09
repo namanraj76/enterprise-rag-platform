@@ -1,1 +1,1 @@
-"""Enterprise RAG platform package."""
+"""Aurelia AI assistant application package."""
