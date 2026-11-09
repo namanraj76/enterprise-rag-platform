@@ -59,6 +59,8 @@ The callback validates a cryptographically random, one-time, expiring OAuth `sta
 ## Render deployment
 
 `render.yaml` defines a Python web service and a private Render PostgreSQL database. Create a Blueprint from this repository in Render and deploy it. The blueprint uses Render's **free** plans to avoid assuming a paid plan; be aware the free PostgreSQL instance is temporary and may expire after Render's free retention period. For data that must be retained, choose a persistent PostgreSQL plan before inviting users and maintain database backups.
+The `.python-version` file pins Render to Python 3.12.7 so the pinned dependencies use
+prebuilt wheels instead of attempting an unavailable Rust build on Python 3.14.
 
 In the Render service's Environment settings, set the exact assigned HTTPS service URL as
 `APP_BASE_URL` (no trailing slash), and provide `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
