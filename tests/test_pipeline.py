@@ -131,6 +131,22 @@ def test_model_status_reports_ready_when_model_is_available(monkeypatch):
     }
 
 
+def test_model_status_accepts_openrouter_free_router(monkeypatch):
+    response = httpx.Response(
+        200,
+        json={"data": [{"id": "another/free-model"}]},
+        request=httpx.Request("GET", "https://openrouter.ai/api/v1/models"),
+    )
+    monkeypatch.setenv("MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("MODEL_NAME", "openrouter/free")
+    monkeypatch.setattr(generator_module.httpx, "get", lambda *args, **kwargs: response)
+
+    assert generator_module.get_model_status() == {
+        "status": "ready",
+        "model": "openrouter/free",
+    }
+
+
 def test_model_status_reports_missing_model(monkeypatch):
     response = httpx.Response(
         200,
@@ -287,5 +303,5 @@ def test_render_uses_openrouter_and_requires_secret_and_model():
     render_config = (Path(__file__).resolve().parents[1] / "render.yaml").read_text()
     assert "key: MODEL_BASE_URL\n        value: https://openrouter.ai/api/v1" in render_config
     assert "key: MODEL_API_KEY\n        sync: false" in render_config
-    assert "key: MODEL_NAME\n        sync: false" in render_config
+    assert "key: MODEL_NAME\n        value: openrouter/free" in render_config
     assert "127.0.0.1" not in render_config

@@ -98,7 +98,7 @@ def get_model_status() -> dict[str, str]:
         return {"status": "offline", "model": model}
 
     equivalent_models = {model, f"{model}:latest"} if ":" not in model else {model}
-    if not equivalent_models.intersection(available_models):
+    if model != "openrouter/free" and not equivalent_models.intersection(available_models):
         return {"status": "model_missing", "model": model}
     return {"status": "ready", "model": model}
 

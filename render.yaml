@@ -47,4 +47,4 @@ services:
       - key: MODEL_API_KEY
         sync: false
       - key: MODEL_NAME
-        sync: false
+        value: openrouter/free
