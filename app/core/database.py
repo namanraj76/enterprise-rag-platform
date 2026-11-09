@@ -7,6 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import (
+    BigInteger,
     ForeignKey,
     Integer,
     JSON,
@@ -122,4 +123,4 @@ class Conversation(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     messages: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
     history: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
-    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)

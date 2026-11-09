@@ -1,5 +1,8 @@
+from sqlalchemy import BigInteger
+
 import app.generation.conversational_generator as generator_module
 from app.ingestion.document_store import document_store
+
 
 def test_health_endpoint(client, monkeypatch):
     monkeypatch.setenv("MODEL_NAME", "llama3.2:3b")
@@ -233,3 +236,9 @@ def test_homepage_renders_aurelia_chat_and_document_library(client):
     assert 'aria-label="Knowledge library"' in response.text
     assert 'id="documentInput"' in response.text
     assert 'id="dictateButton"' in response.text
+
+
+def test_conversation_updated_at_uses_64_bit_integer():
+    from app.core.database import Conversation
+
+    assert isinstance(Conversation.__table__.c.updated_at.type, BigInteger)
