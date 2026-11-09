@@ -1,12 +1,12 @@
 """Use a 64-bit integer for conversation millisecond timestamps.
 
-Revision ID: 0003_conversation_updated_at_bigint
+Revision ID: 0003_conversation_updated_at
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0003_conversation_updated_at_bigint"
+revision = "0003_conversation_updated_at"
 down_revision = "0002_email_authentication"
 branch_labels = None
 depends_on = None
