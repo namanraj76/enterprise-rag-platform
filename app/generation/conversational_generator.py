@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import unicodedata
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 import httpx
 from dotenv import load_dotenv
@@ -18,8 +18,8 @@ except ImportError:
     openai = None
 
 
-DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434/v1"
-DEFAULT_OLLAMA_MODEL = "gemma3:4b"
+DEFAULT_MODEL_BASE_URL = "http://127.0.0.1:11434/v1"
+DEFAULT_MODEL_NAME = "gemma3:4b"
 _HINGLISH_MARKERS = {
     "aap", "achha", "acha", "batao", "chahiye", "hai", "hain", "ka", "kaise",
     "kar", "ke", "ki", "kyu", "kyun", "mai", "mein", "mujhe", "nahi", "nahin",
@@ -49,60 +49,62 @@ class ChatModelError(Exception):
     """Raised when the configured chat model cannot produce a response."""
 
 
-def ollama_configuration() -> tuple[str, str]:
-    base_url = os.getenv("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL).strip().rstrip("/")
-    model = os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL).strip()
+def model_configuration() -> tuple[str, str]:
+    base_url = os.getenv(
+        "MODEL_BASE_URL",
+        os.getenv("OLLAMA_BASE_URL", DEFAULT_MODEL_BASE_URL),
+    ).strip().rstrip("/")
+    model = os.getenv(
+        "MODEL_NAME",
+        os.getenv("OLLAMA_MODEL", DEFAULT_MODEL_NAME),
+    ).strip()
     return base_url, model
 
 
-def ollama_api_key() -> str:
-    """Optional bearer token for Ollama-compatible remote endpoints."""
-    return os.getenv("OLLAMA_API_KEY", "").strip()
+def model_api_key() -> str:
+    """Optional bearer token for protected OpenAI-compatible endpoints."""
+    return os.getenv("MODEL_API_KEY", os.getenv("OLLAMA_API_KEY", "")).strip()
 
 
 def _validate_transport_security(base_url: str, api_key: str) -> None:
     if api_key and urlsplit(base_url).scheme.lower() != "https":
-        raise ChatModelError("Use an HTTPS OLLAMA_BASE_URL when OLLAMA_API_KEY is configured.")
+        raise ChatModelError("Use an HTTPS MODEL_BASE_URL when MODEL_API_KEY is configured.")
 
 
-def get_ollama_status() -> dict[str, str]:
-    base_url, model = ollama_configuration()
-    api_key = ollama_api_key()
+def get_model_status() -> dict[str, str]:
+    base_url, model = model_configuration()
+    api_key = model_api_key()
     try:
         _validate_transport_security(base_url, api_key)
     except ChatModelError:
         return {"status": "offline", "model": model}
-    parsed_url = urlsplit(base_url)
-    api_path = parsed_url.path.rstrip("/")
-    if api_path.endswith("/v1"):
-        api_path = api_path[:-3]
-    root_url = urlunsplit(
-        (parsed_url.scheme, parsed_url.netloc, api_path, "", "")
-    ).rstrip("/")
     try:
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-        response = httpx.get(f"{root_url}/api/tags", headers=headers, timeout=1.5)
+        response = httpx.get(f"{base_url}/models", headers=headers, timeout=5)
         response.raise_for_status()
         payload = response.json()
-        if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
+        if not isinstance(payload, dict):
             return {"status": "offline", "model": model}
-        installed_models = {
-            name
-            for item in payload["models"]
-            if isinstance(item, dict)
-            and isinstance((name := item.get("name")), str)
-        }
+        model_items = payload.get("data", payload.get("models"))
+        if not isinstance(model_items, list):
+            return {"status": "offline", "model": model}
+        available_models = set()
+        for item in model_items:
+            if isinstance(item, dict):
+                name = item.get("id", item.get("name"))
+                if isinstance(name, str):
+                    available_models.add(name)
     except (httpx.HTTPError, ValueError):
         return {"status": "offline", "model": model}
 
     equivalent_models = {model, f"{model}:latest"} if ":" not in model else {model}
-    if not equivalent_models.intersection(installed_models):
+    if not equivalent_models.intersection(available_models):
         return {"status": "model_missing", "model": model}
     return {"status": "ready", "model": model}
 
 
 class ConversationalGenerator:
-    """Generate replies using an Ollama-compatible OpenAI API endpoint."""
+    """Generate replies using an OpenAI-compatible model endpoint."""
 
     def generate(
         self,
@@ -110,8 +112,8 @@ class ConversationalGenerator:
         history: list[dict[str, str]] | None = None,
         evidence: list[dict[str, str]] | None = None,
     ) -> str:
-        base_url, model = ollama_configuration()
-        api_key = ollama_api_key()
+        base_url, model = model_configuration()
+        api_key = model_api_key()
         _validate_transport_security(base_url, api_key)
         if openai is None:
             raise ChatModelError("The OpenAI-compatible client package is not installed.")
@@ -156,8 +158,6 @@ class ConversationalGenerator:
         try:
             client = openai.OpenAI(
                 base_url=base_url,
-                # Ollama itself ignores this placeholder; compatible hosted endpoints
-                # can validate their own bearer key using OLLAMA_API_KEY.
                 api_key=api_key or "ollama",
                 timeout=120,
             )
@@ -169,20 +169,20 @@ class ConversationalGenerator:
             )
         except openai.NotFoundError as exc:
             raise ChatModelError(
-                f"Model '{model}' is not available on the configured Ollama server. "
-                f"Install it there with `ollama pull {model}`."
+                f"Model '{model}' is not available from the configured model provider. "
+                "Check the model name and provider account."
             ) from exc
         except openai.APITimeoutError as exc:
             raise ChatModelError(
-                "The configured model endpoint took too long to respond. Try again or use a smaller Ollama model."
+                "The configured model endpoint took too long to respond. Try again or choose a faster model."
             ) from exc
         except openai.APIConnectionError as exc:
             raise ChatModelError(
-                "Could not connect to the configured Ollama endpoint. Check its URL and network access."
+                "Could not connect to the configured model endpoint. Check its URL and network access."
             ) from exc
         except openai.OpenAIError as exc:
             raise ChatModelError(
-                "The model request failed. Check the Ollama endpoint, optional credentials, and installed model."
+                "The model request failed. Check the provider endpoint, API key, and model name."
             ) from exc
 
         if not response or not response.choices:

@@ -42,9 +42,9 @@ services:
         value: "false"
       - key: SESSION_SECRET
         generateValue: true
-      - key: OLLAMA_BASE_URL
+      - key: MODEL_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: MODEL_API_KEY
         sync: false
-      - key: OLLAMA_API_KEY
-        value: ""
-      - key: OLLAMA_MODEL
-        value: llama3.2:1b
+      - key: MODEL_NAME
+        sync: false

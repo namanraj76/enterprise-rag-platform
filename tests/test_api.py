@@ -2,8 +2,8 @@ import app.generation.conversational_generator as generator_module
 from app.ingestion.document_store import document_store
 
 def test_health_endpoint(client, monkeypatch):
-    monkeypatch.setenv("OLLAMA_MODEL", "llama3.2:3b")
-    monkeypatch.setattr(generator_module, "get_ollama_status", lambda: {
+    monkeypatch.setenv("MODEL_NAME", "llama3.2:3b")
+    monkeypatch.setattr(generator_module, "get_model_status", lambda: {
         "status": "model_missing",
         "model": "llama3.2:3b",
     })
@@ -98,13 +98,13 @@ def test_chat_surfaces_local_model_failures(client, monkeypatch):
         assert isinstance(self, generator_module.ConversationalGenerator)
         assert message == "Hello"
         assert history == []
-        raise generator_module.ChatModelError("Ollama is not running. Start Ollama and try again.")
+        raise generator_module.ChatModelError("Model provider is unavailable. Try again.")
 
     monkeypatch.setattr(generator_module.ConversationalGenerator, "generate", generate)
     response = client.post("/chat", json={"message": "Hello"})
 
     assert response.status_code == 503
-    assert response.json()["detail"] == "Ollama is not running. Start Ollama and try again."
+    assert response.json()["detail"] == "Model provider is unavailable. Try again."
 
 
 def test_upload_chat_cites_relevant_document(client, monkeypatch):

@@ -18,7 +18,7 @@ from app.core.database import Conversation, SessionLocal, User
 from app.generation.conversational_generator import (
     ChatModelError,
     ConversationalGenerator,
-    get_ollama_status,
+    get_model_status,
 )
 from app.ingestion.document_store import (
     MAX_UPLOAD_BYTES,
@@ -216,7 +216,7 @@ def _document_response(info: DocumentInfo) -> DocumentResponse:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    model_status = get_ollama_status()
+    model_status = get_model_status()
     return {
         "status": "ok",
         "service": "aurelia",

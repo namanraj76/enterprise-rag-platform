@@ -10,9 +10,9 @@ os.environ["APP_ENV"] = "development"
 
 @pytest.fixture(autouse=True)
 def prevent_real_model_calls(monkeypatch):
-    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
-    monkeypatch.setenv("OLLAMA_API_KEY", "")
-    monkeypatch.setenv("OLLAMA_MODEL", "test-model")
+    monkeypatch.setenv("MODEL_BASE_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.setenv("MODEL_API_KEY", "")
+    monkeypatch.setenv("MODEL_NAME", "test-model")
     from app.ingestion.document_store import document_store
     from app.core.database import (
         Base,

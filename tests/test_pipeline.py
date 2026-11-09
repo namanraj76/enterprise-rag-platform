@@ -24,7 +24,7 @@ def test_local_model_receives_conversation_history(monkeypatch):
         )
 
     monkeypatch.setattr(generator_module.openai, "OpenAI", create_client)
-    monkeypatch.setenv("OLLAMA_MODEL", "llama3.2:3b")
+    monkeypatch.setenv("MODEL_NAME", "llama3.2:3b")
 
     answer = ConversationalGenerator().generate(
         "hi",
@@ -117,43 +117,43 @@ def test_latest_message_selects_reply_language(message, expected_language):
     assert "overrides any conflicting language preference" in instruction
 
 
-def test_ollama_status_reports_ready_when_model_is_installed(monkeypatch):
+def test_model_status_reports_ready_when_model_is_available(monkeypatch):
     response = httpx.Response(
         200,
-        json={"models": [{"name": "test-model", "size": 1}]},
-        request=httpx.Request("GET", "http://127.0.0.1:11434/api/tags"),
+        json={"data": [{"id": "test-model"}]},
+        request=httpx.Request("GET", "http://127.0.0.1:11434/v1/models"),
     )
     monkeypatch.setattr(generator_module.httpx, "get", lambda *args, **kwargs: response)
 
-    assert generator_module.get_ollama_status() == {
+    assert generator_module.get_model_status() == {
         "status": "ready",
         "model": "test-model",
     }
 
 
-def test_ollama_status_reports_missing_model(monkeypatch):
+def test_model_status_reports_missing_model(monkeypatch):
     response = httpx.Response(
         200,
-        json={"models": [{"name": "other-model"}]},
-        request=httpx.Request("GET", "http://127.0.0.1:11434/api/tags"),
+        json={"data": [{"id": "other-model"}]},
+        request=httpx.Request("GET", "http://127.0.0.1:11434/v1/models"),
     )
     monkeypatch.setattr(generator_module.httpx, "get", lambda *args, **kwargs: response)
 
-    assert generator_module.get_ollama_status() == {
+    assert generator_module.get_model_status() == {
         "status": "model_missing",
         "model": "test-model",
     }
 
 
-def test_ollama_status_reports_offline(monkeypatch):
+def test_model_status_reports_offline(monkeypatch):
     def connection_error(*args, **kwargs):
-        assert args == ("http://127.0.0.1:11434/api/tags",)
-        assert kwargs == {"headers": {}, "timeout": 1.5}
-        raise httpx.ConnectError("Ollama is offline")
+        assert args == ("http://127.0.0.1:11434/v1/models",)
+        assert kwargs == {"headers": {}, "timeout": 5}
+        raise httpx.ConnectError("Model provider is offline")
 
     monkeypatch.setattr(generator_module.httpx, "get", connection_error)
 
-    assert generator_module.get_ollama_status() == {
+    assert generator_module.get_model_status() == {
         "status": "offline",
         "model": "test-model",
     }
@@ -170,7 +170,7 @@ def test_local_model_connection_failure_is_actionable(monkeypatch):
 
     monkeypatch.setattr(generator_module.openai, "OpenAI", create_client)
 
-    with pytest.raises(ChatModelError, match="configured Ollama endpoint"):
+    with pytest.raises(ChatModelError, match="configured model endpoint"):
         ConversationalGenerator().generate("hello")
 
 
@@ -190,7 +190,7 @@ def test_local_model_missing_error_gives_pull_command(monkeypatch):
 
     monkeypatch.setattr(generator_module.openai, "OpenAI", create_client)
 
-    with pytest.raises(ChatModelError, match=r"ollama pull test-model"):
+    with pytest.raises(ChatModelError, match="model provider"):
         ConversationalGenerator().generate("hello")
 
 
@@ -217,7 +217,7 @@ def test_empty_local_model_response_is_not_silently_accepted(monkeypatch):
         ConversationalGenerator().generate("hello")
 
 
-def test_remote_ollama_api_uses_configured_url_and_optional_bearer_key(monkeypatch):
+def test_remote_model_api_uses_configured_url_and_bearer_key(monkeypatch):
     observed = {}
     response = SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content="Remote response"))]
@@ -231,60 +231,61 @@ def test_remote_ollama_api_uses_configured_url_and_optional_bearer_key(monkeypat
             )
         )
 
-    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.net/v1")
-    monkeypatch.setenv("OLLAMA_API_KEY", "remote-secret")
-    monkeypatch.setenv("OLLAMA_MODEL", "aurelia-model")
+    monkeypatch.setenv("MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("MODEL_API_KEY", "remote-secret")
+    monkeypatch.setenv("MODEL_NAME", "provider/model")
     monkeypatch.setattr(generator_module.openai, "OpenAI", create_client)
 
     assert ConversationalGenerator().generate("Hello") == "Remote response"
     assert observed == {
-        "base_url": "https://ollama.example.net/v1",
+        "base_url": "https://openrouter.ai/api/v1",
         "api_key": "remote-secret",
         "timeout": 120,
     }
 
 
-def test_remote_ollama_status_sends_optional_bearer_key(monkeypatch):
+def test_remote_model_status_sends_bearer_key(monkeypatch):
     observed = {}
     response = httpx.Response(
         200,
-        json={"models": [{"name": "test-model"}]},
-        request=httpx.Request("GET", "https://ollama.example.net/api/tags"),
+        json={"data": [{"id": "test-model"}]},
+        request=httpx.Request("GET", "https://openrouter.ai/api/v1/models"),
     )
 
     def get(url, **kwargs):
         observed.update(url=url, kwargs=kwargs)
         return response
 
-    monkeypatch.setenv("OLLAMA_BASE_URL", "https://ollama.example.net/v1")
-    monkeypatch.setenv("OLLAMA_API_KEY", "remote-secret")
+    monkeypatch.setenv("MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("MODEL_API_KEY", "remote-secret")
     monkeypatch.setattr(generator_module.httpx, "get", get)
 
-    assert generator_module.get_ollama_status() == {
+    assert generator_module.get_model_status() == {
         "status": "ready",
         "model": "test-model",
     }
-    assert observed["url"] == "https://ollama.example.net/api/tags"
+    assert observed["url"] == "https://openrouter.ai/api/v1/models"
     assert observed["kwargs"]["headers"] == {"Authorization": "Bearer remote-secret"}
 
 
-def test_ollama_api_key_requires_https(monkeypatch):
-    monkeypatch.setenv("OLLAMA_BASE_URL", "http://ollama.example.net/v1")
-    monkeypatch.setenv("OLLAMA_API_KEY", "remote-secret")
+def test_model_api_key_requires_https(monkeypatch):
+    monkeypatch.setenv("MODEL_BASE_URL", "http://model.example.net/v1")
+    monkeypatch.setenv("MODEL_API_KEY", "remote-secret")
 
-    with pytest.raises(ChatModelError, match="HTTPS OLLAMA_BASE_URL"):
+    with pytest.raises(ChatModelError, match="HTTPS MODEL_BASE_URL"):
         ConversationalGenerator().generate("Hello")
 
-    assert generator_module.get_ollama_status() == {
+    assert generator_module.get_model_status() == {
         "status": "offline",
         "model": "test-model",
     }
 
 
-def test_render_model_endpoint_is_explicit_and_not_loopback():
+def test_render_uses_openrouter_and_requires_secret_and_model():
     from pathlib import Path
 
     render_config = (Path(__file__).resolve().parents[1] / "render.yaml").read_text()
-    assert "key: OLLAMA_BASE_URL\n        sync: false" in render_config
-    assert 'key: OLLAMA_API_KEY\n        value: ""' in render_config
+    assert "key: MODEL_BASE_URL\n        value: https://openrouter.ai/api/v1" in render_config
+    assert "key: MODEL_API_KEY\n        sync: false" in render_config
+    assert "key: MODEL_NAME\n        sync: false" in render_config
     assert "127.0.0.1" not in render_config

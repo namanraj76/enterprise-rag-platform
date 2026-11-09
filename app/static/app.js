@@ -459,7 +459,7 @@ fetch('/health')
     if(status.model_status === 'ready'){
       modelStatus.textContent = `Model ready: ${status.model}`;
     } else if(status.model_status === 'model_missing'){
-      modelStatus.textContent = `Install on Ollama: ollama pull ${status.model}`;
+      modelStatus.textContent = `Model unavailable: ${status.model}`;
     } else {
       modelStatus.textContent = 'Model server unavailable';
     }
